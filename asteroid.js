@@ -3,11 +3,72 @@ var canvas;
 var ctx;
 
 var entities = [];
+var spaceship;
 
+
+//key code from nokarma.org/
+var Key = {
+  _pressed: {},
+
+  LEFT: 37,
+  UP: 38,
+  RIGHT: 39,
+  DOWN: 40,
+
+  isDown: function(keyCode) {
+    return this._pressed[keyCode];
+  },
+
+  onKeydown: function(event) {
+    this._pressed[event.keyCode] = true;
+  },
+
+  onKeyup: function(event) {
+    this._pressed[event.keyCode] = false;
+  }
+};
 
 //javascript mod is broken
 Number.prototype.mod = function(n) {
   return ((this%n)+n)%n;
+}
+
+function Spaceship(x, y, s, fillStyle) {
+  var angle = Math.PI/4;
+
+  this.render = function() {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.lineWidth = 0.2;
+    ctx.scale(s, s);
+    ctx.fillStyle = fillStyle;
+
+    ctx.beginPath();
+
+    ctx.moveTo(-0.5, -0.5);
+
+    ctx.lineTo( 0.5, -0.5);
+    ctx.lineTo( 0.0,  1.0);
+
+    ctx.closePath();
+    ctx.stroke();
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  this.update = function(delta) {
+    var dt = delta / 1000;
+    var turnRate = 10;
+    if(Key.isDown(Key.LEFT)) {
+      angle -= dt * turnRate;
+    }
+    if(Key.isDown(Key.RIGHT)) {
+      angle += dt * turnRate;
+    }
+  }
+
 }
 
 function Asteroid(x, y, vx, vy, rot, r, n, fillStyle) {
@@ -133,7 +194,7 @@ function Asteroid(x, y, vx, vy, rot, r, n, fillStyle) {
 function init() {
   canvas = document.getElementById("canvas");
   ctx    = canvas.getContext("2d");
-  for(var i=0; i<20; ++i) {
+  for(var i=0; i<10; ++i) {
     var r = Math.floor(255 * Math.random());
     var g = Math.floor(255 * Math.random());
     var b = Math.floor(255 * Math.random());
@@ -148,6 +209,10 @@ function init() {
 
     entities.push(new Asteroid(x, y, vx, vy, rot, rad, 20, color));
   }
+  //Create a player entity
+  spaceship = new Spaceship(canvas.width/2, canvas.height/2, 30, "rgba(10,50,200,0.5)");
+
+  entities.push(spaceship);
 }
 
 
@@ -163,7 +228,6 @@ function update(delta) {
 }
 
 function render() {
-
   canvas.width = canvas.width;
 
   for(var i=0; i < entities.length; ++i) {
@@ -187,4 +251,10 @@ function main() {
 
 }
 setInterval(main, 1);
+
+window.addEventListener('keyup', function(event) {
+  Key.onKeyup(event); }, false);
+
+window.addEventListener('keydown', function(event) {
+  Key.onKeydown(event); }, false);
 
