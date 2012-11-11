@@ -33,27 +33,90 @@ Number.prototype.mod = function(n) {
   return ((this%n)+n)%n;
 }
 
-function Spaceship(x, y, s, fillStyle) {
-  var angle = Math.PI/4;
+function Mesh(pts, fillStyle) {
 
-  this.render = function() {
+  this.render = function(x, y, angle) {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
-    ctx.lineWidth = 0.2;
-    ctx.scale(s, s);
     ctx.fillStyle = fillStyle;
-
     ctx.beginPath();
-
-    ctx.moveTo(-0.5, -0.5);
-
-    ctx.lineTo( 0.5, -0.5);
-    ctx.lineTo( 0.0,  1.0);
-
+    ctx.moveTo(pts[0].x,pts[0].y);
+    for(var i=1; i<pts.length; ++i) {
+      ctx.lineTo(pts[i].x, pts[i].y);
+    }
     ctx.closePath();
-    ctx.stroke();
     ctx.fill();
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  this.renderWrapped = function(x, y, angle, rad) {
+    this.render(x, y, angle);
+    var lx = x - rad <= 0;
+    var gx = x + rad >= canvas.width;
+    var ly = y - rad <= 0;
+    var gy = y + rad >= canvas.height;
+    //copy paste for now...
+    if(lx) {
+      ctx.translate(canvas.width, 0);
+      this.render(x, y, angle);
+      ctx.translate(-canvas.width, 0);
+    } else if(gx) {
+      ctx.translate(-canvas.width, 0);
+      this.render(x, y, angle);
+      ctx.translate(canvas.width, 0);
+    }
+
+    if(ly) {
+      ctx.translate(0, canvas.height);
+      this.render(x, y, angle);
+      ctx.translate(0, -canvas.height);
+    } else if(gy) {
+      ctx.translate(0, -canvas.height);
+      this.render(x, y, angle);
+      ctx.translate(0, canvas.height);
+    }
+
+    if(lx && ly) {
+      ctx.translate(canvas.width, canvas.height);
+      this.render(x, y, angle);
+      ctx.translate(-canvas.width, -canvas.height);
+    } else if(lx && gy) {
+      ctx.translate(canvas.width, -canvas.height);
+      this.render(x, y, angle);
+      ctx.translate(-canvas.width, canvas.height);
+    } else if(gx && ly) {
+      ctx.translate(-canvas.width, canvas.height);
+      this.render(x, y, angle);
+      ctx.translate(canvas.width, -canvas.height);
+    } else if(gx && gy) {
+      ctx.translate(-canvas.width, -canvas.height);
+      this.render(x, y, angle);
+      ctx.translate(canvas.width, canvas.height);
+    }
+  }
+}
+
+function Spaceship(x, y, s, fillStyle) {
+  var angle = 0;
+
+  var pts = [];
+  pts.push({ x:-0.5*s, y: 0.5*s });
+  pts.push({ x:-0.5*s, y:-0.5*s });
+  pts.push({ x: 1.0*s, y: 0.0*s });
+
+  var mesh = new Mesh(pts, fillStyle);
+
+  this.render = function() {
+    ctx.save();
+    //ctx.translate(x, y);
+    //ctx.rotate(angle-Math.PI/2);
+    ctx.lineWidth = 3;
+
+    //mesh.render(x, y, angle);
+    mesh.renderWrapped(x, y, angle, 1.5*s);
 
     ctx.restore();
   }
@@ -61,11 +124,21 @@ function Spaceship(x, y, s, fillStyle) {
   this.update = function(delta) {
     var dt = delta / 1000;
     var turnRate = 10;
+    var maxVelocity = 300;
+
     if(Key.isDown(Key.LEFT)) {
       angle -= dt * turnRate;
     }
     if(Key.isDown(Key.RIGHT)) {
       angle += dt * turnRate;
+    }
+
+    if(Key.isDown(Key.UP)) {
+      x += maxVelocity * dt * Math.cos(angle);
+      y += maxVelocity * dt * Math.sin(angle);
+
+      x = x.mod(canvas.width);
+      y = y.mod(canvas.height);
     }
   }
 
@@ -93,78 +166,16 @@ function Asteroid(x, y, vx, vy, rot, r, n, fillStyle) {
     pts.push({ x:px, y:py });
   }
 
-
+  var mesh = new Mesh(pts, fillStyle);
 
   this.render = function() {
     ctx.save();
-    ctx.translate(x, y);
     ctx.fillStyle = fillStyle;
     ctx.lineWidth = 2;
 
-    var draw = function() {
-
-      ctx.save();
-      ctx.beginPath();
-      ctx.rotate(theta);
-      ctx.moveTo(pts[0].x,pts[0].y);
-      for(var i=1; i<pts.length; ++i) {
-        ctx.lineTo(pts[i].x, pts[i].y);
-      }
-
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    draw();
-
     var rad = r * (1 + spikiness);
-    ctx.save();
 
-    var lx = x - rad <= 0;
-    var gx = x + rad >= canvas.width;
-    var ly = y - rad <= 0;
-    var gy = y + rad >= canvas.height;
-
-    //copy paste for now...
-    if(lx) {
-      ctx.translate(canvas.width, 0);
-      draw();
-      ctx.translate(-canvas.width, 0);
-    } else if(gx) {
-      ctx.translate(-canvas.width, 0);
-      draw();
-      ctx.translate(canvas.width, 0);
-    }
-
-    if(ly) {
-      ctx.translate(0, canvas.height);
-      draw();
-      ctx.translate(0, -canvas.height);
-    } else if(gy) {
-      ctx.translate(0, -canvas.height);
-      draw();
-      ctx.translate(0, canvas.height);
-    }
-
-    if(lx && ly) {
-      ctx.translate(canvas.width, canvas.height);
-      draw();
-      ctx.translate(-canvas.width, -canvas.height);
-    } else if(lx && gy) {
-      ctx.translate(canvas.width, -canvas.height);
-      draw();
-      ctx.translate(-canvas.width, canvas.height);
-    } else if(gx && ly) {
-      ctx.translate(-canvas.width, canvas.height);
-      draw();
-      ctx.translate(canvas.width, -canvas.height);
-    } else if(gx && gy) {
-      ctx.translate(-canvas.width, -canvas.height);
-      draw();
-      ctx.translate(canvas.width, canvas.height);
-    }
+    mesh.renderWrapped(x, y, theta, rad);
 
     ctx.restore();
 
