@@ -246,11 +246,6 @@ function render() {
   }
 }
 
-document.onkeypress = function(e) {
-  paused = !paused;
-  console.log("Toggled pause to " + paused);
-}
-
 function main() {
   var currentTick = Date.now();
   var delta = currentTick - lastTick;
