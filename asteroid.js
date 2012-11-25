@@ -124,6 +124,19 @@ function Bullet(life, x, y, s, v, angle, fillStyle) {
 
     x = (x + dt * v * Math.cos(angle)).mod(canvas.width);
     y = (y + dt * v * Math.sin(angle)).mod(canvas.height);
+    this.checkCollisions();
+  }
+
+  this.checkCollisions = function() {
+    for(var i=0; i < entities.length; ++i) {
+      if(entities[i] != spaceship) {
+        if(entities[i].intersects(x, y)) {
+          //Do something
+          life = 0;
+          return;
+        }
+      }
+    }
   }
 }
 
@@ -230,12 +243,12 @@ function Asteroid(x, y, vx, vy, rot, r, n, fillStyle) {
 
     ctx.restore();
 
-    /*
+    ctx.save();
     ctx.beginPath();
-    ctx.arc(0, 0, r*(1+spikiness), 0, 2 * Math.PI);
+    ctx.arc(x, y, r*(1+spikiness), 0, 2 * Math.PI);
 
     ctx.stroke();
-    */
+    
     ctx.restore();
   } //render();
 
@@ -249,8 +262,11 @@ function Asteroid(x, y, vx, vy, rot, r, n, fillStyle) {
 
     x = x.mod(canvas.width);
     y = y.mod(canvas.height);
-
   } //update();
+  this.intersects = function(px, py) {
+    var rad = r * (1 + spikiness);
+    return (px - x) * (px - x) + (py - y) * (py - y) <= rad * rad;
+  }
 }
 
 function init() {
