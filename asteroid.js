@@ -6,6 +6,7 @@ var entities = [];
 var bullets = [];
 var spaceship;
 
+var entitiesToAdd = [];
 
 //key code from nokarma.org/
 var Key = {
@@ -132,6 +133,7 @@ function Bullet(life, x, y, s, v, angle, fillStyle) {
       if(entities[i] != spaceship) {
         if(entities[i].intersects(x, y)) {
           //Do something
+          entities[i].handleCollision();
           life = 0;
           return;
         }
@@ -145,6 +147,8 @@ function Spaceship(x, y, s, fillStyle) {
   var angle = 0;
   var maxWeaponCooldown = 1000;
   var weaponCooldown = 0;
+
+  var life = 1;
 
   var pts = [];
   pts.push({ x:-0.5*s, y: 0.5*s });
@@ -161,6 +165,8 @@ function Spaceship(x, y, s, fillStyle) {
   tailPts.push({ x:-1.0*s, y: 0.0*s });  
 
   var tail = new Mesh(tailPts, "rgba(200, 200, 50, 0.5)");
+
+  this.life = function() { return life; }
 
   this.render = function() {
     ctx.save();
@@ -179,7 +185,7 @@ function Spaceship(x, y, s, fillStyle) {
 
   this.update = function(delta) {
     var dt = delta / 1000;
-    var turnRate = 10;
+    var turnRate = 5;
     var maxVelocity = 300;
     if(weaponCooldown > 0) {
       weaponCooldown -= delta;
@@ -208,8 +214,8 @@ function Spaceship(x, y, s, fillStyle) {
   }
 }
 
-function Asteroid(x, y, vx, vy, rot, r, n, fillStyle) {
-
+function Asteroid(size, x, y, vx, vy, rot, r, n, fillStyle) {
+  var life = 1;
   var theta = 0;
   var rotation = rot;
 
@@ -232,6 +238,8 @@ function Asteroid(x, y, vx, vy, rot, r, n, fillStyle) {
 
   var mesh = new Mesh(pts, fillStyle);
 
+  this.life = function() { return life; }
+
   this.render = function() {
     ctx.save();
     ctx.fillStyle = fillStyle;
@@ -243,6 +251,7 @@ function Asteroid(x, y, vx, vy, rot, r, n, fillStyle) {
 
     ctx.restore();
 
+/*
     ctx.save();
     ctx.beginPath();
     ctx.arc(x, y, r*(1+spikiness), 0, 2 * Math.PI);
@@ -250,6 +259,7 @@ function Asteroid(x, y, vx, vy, rot, r, n, fillStyle) {
     ctx.stroke();
     
     ctx.restore();
+    */
   } //render();
 
   this.update = function(delta) {
@@ -266,6 +276,18 @@ function Asteroid(x, y, vx, vy, rot, r, n, fillStyle) {
   this.intersects = function(px, py) {
     var rad = r * (1 + spikiness);
     return (px - x) * (px - x) + (py - y) * (py - y) <= rad * rad;
+  }
+  this.handleCollision = function() {
+    life = 0;
+    if(size > 0) {
+      var vel = 200;
+      
+      for(var i = 0; i < 2; ++i) {
+        var newVx = -vel/2 + vel * Math.random();
+        var newVy = -vel/2 + vel * Math.random();
+        entitiesToAdd.push(new Asteroid(size - 1, x, y, newVx, newVy, rot, r/2, n/2, fillStyle));
+      }
+    }
   }
 }
 
@@ -285,7 +307,7 @@ function init() {
     var rad = 30 + 20 * Math.random();
     var color = "rgba(" + r + "," + g + "," + b + "," + a + ")";
 
-    entities.push(new Asteroid(x, y, vx, vy, rot, rad, 20, color));
+    entities.push(new Asteroid(2, x, y, vx, vy, rot, rad, 20, color));
   }
   //Create a player entity
   spaceship = new Spaceship(canvas.width/2, canvas.height/2, 30, "rgba(10,50,200,0.5)");
@@ -311,6 +333,20 @@ function update(delta) {
       --i;
     }
   }
+
+  for(var i=0; i < entities.length; ++i) {
+    if(entities[i].life() <= 0) {
+      entities.splice(i, 1);
+      --i;
+    }
+  }
+
+  for(var i=0; i<entitiesToAdd.length; ++i) {
+    entities.push(entitiesToAdd[i]);
+    console.log("added new entity " + entitiesToAdd[i]);
+  }
+  entitiesToAdd = [];
+
 }
 
 function render() {
