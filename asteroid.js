@@ -3,6 +3,7 @@ var canvas;
 var ctx;
 
 var entities = [];
+var bullets = [];
 var spaceship;
 
 
@@ -10,6 +11,7 @@ var spaceship;
 var Key = {
   _pressed: {},
 
+  SPACE: 32,
   LEFT: 37,
   UP: 38,
   RIGHT: 39,
@@ -99,8 +101,37 @@ function Mesh(pts, fillStyle) {
   }
 }
 
+function Bullet(life, x, y, s, v, angle, fillStyle) {
+  var pts = [];
+  pts.push({x:-0.5*s, y:-0.5*s});
+  pts.push({x: 0.5*s, y:-0.5*s});
+  pts.push({x: 0.5*s, y: 0.5*s});
+  pts.push({x:-0.5*s, y: 0.5*s});
+  var mesh = new Mesh(pts, fillStyle);
+
+  this.render = function() {
+    ctx.save();
+    mesh.renderWrapped(x, y, angle, 1.42*s); //really sqrt 2
+    ctx.restore();
+  }
+  this.life = function() { return life; }
+
+  this.update = function(delta) {
+    if(this.life < 0) { return; }
+    life -= delta;
+
+    var dt = delta / 1000.0;
+
+    x = (x + dt * v * Math.cos(angle)).mod(canvas.width);
+    y = (y + dt * v * Math.sin(angle)).mod(canvas.height);
+  }
+}
+
+
 function Spaceship(x, y, s, fillStyle) {
   var angle = 0;
+  var maxWeaponCooldown = 1000;
+  var weaponCooldown = 0;
 
   var pts = [];
   pts.push({ x:-0.5*s, y: 0.5*s });
@@ -108,6 +139,15 @@ function Spaceship(x, y, s, fillStyle) {
   pts.push({ x: 1.0*s, y: 0.0*s });
 
   var mesh = new Mesh(pts, fillStyle);
+
+  var tailPts = [];
+  var weaponCooldown = 1000;
+
+  tailPts.push({ x:-0.5*s, y: 0.2*s });
+  tailPts.push({ x:-0.5*s, y:-0.2*s });
+  tailPts.push({ x:-1.0*s, y: 0.0*s });  
+
+  var tail = new Mesh(tailPts, "rgba(200, 200, 50, 0.5)");
 
   this.render = function() {
     ctx.save();
@@ -117,6 +157,9 @@ function Spaceship(x, y, s, fillStyle) {
 
     //mesh.render(x, y, angle);
     mesh.renderWrapped(x, y, angle, 1.5*s);
+    if(Key.isDown(Key.UP)) {
+      tail.renderWrapped(x, y, angle, s);
+    }
 
     ctx.restore();
   }
@@ -125,6 +168,9 @@ function Spaceship(x, y, s, fillStyle) {
     var dt = delta / 1000;
     var turnRate = 10;
     var maxVelocity = 300;
+    if(weaponCooldown > 0) {
+      weaponCooldown -= delta;
+    }
 
     if(Key.isDown(Key.LEFT)) {
       angle -= dt * turnRate;
@@ -140,8 +186,13 @@ function Spaceship(x, y, s, fillStyle) {
       x = x.mod(canvas.width);
       y = y.mod(canvas.height);
     }
+    if(Key.isDown(Key.SPACE)) {
+      if(weaponCooldown <= 0) {
+        bullets.push(new Bullet(2000, x, y, s/5, 500, angle, "rgba(128,128,128,0.5)"));
+        weaponCooldown = maxWeaponCooldown;
+      }
+    }
   }
-
 }
 
 function Asteroid(x, y, vx, vy, rot, r, n, fillStyle) {
@@ -152,7 +203,7 @@ function Asteroid(x, y, vx, vy, rot, r, n, fillStyle) {
   var pts = [];
   var dth = 2*Math.PI / n;
 
-  var spikiness = 1;
+  var spikiness = 0.6;
 
   /**
    *  IDEA: Generate a bunch of points along a circle, and permute them
@@ -236,6 +287,14 @@ function update(delta) {
   for(var i=0; i < entities.length; ++i) {
     entities[i].update(delta);
   }
+  for(var i=0; i < bullets.length; ++i) {
+    bullets[i].update(delta);
+    if(bullets[i].life() <= 0) {
+      console.log("removed bullet " + i);
+      bullets.splice(i,1);
+      --i;
+    }
+  }
 }
 
 function render() {
@@ -243,6 +302,11 @@ function render() {
 
   for(var i=0; i < entities.length; ++i) {
     entities[i].render();
+  }
+  //Render bullets separately - since they are changing quickly.
+  for(var i=0; i < bullets.length; ++i) {
+    bullets[i].render();
+
   }
 }
 
